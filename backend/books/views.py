@@ -1,54 +1,25 @@
-# books/models.py
 from django.utils.text import slugify
-from typing import Dict, List, Optional
+from typing import Optional
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework import viewsets, status
 import requests
-from django.core.cache import cache
-from django.conf import settings
-from django.shortcuts import render, get_object_or_404, redirect
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from .serializers import CommentSerializer, QuoteFeedSerializer, QuoteSerializer, ReactionSerializer, TagSerializer, UserFavoriteSerializer
+from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.db.models import Count, Prefetch
-from .models import Book, Quote, Tag, Reaction, Comment
+from .models import Book, Quote, Tag, Reaction, Comment, UserFavorite
+from .utils import GoogleBooksAPI
 class BookService:
     def __init__(self):
-        self.api_key = settings.GOOGLE_BOOKS_API_KEY
-        self.base_url = "https://www.googleapis.com/books/v1/volumes"
-    
-    def search_books(self, query: str) -> List[Dict]:
-        """Search books and format response for frontend"""
-        cache_key = f"book_search_{query}"
-        cached_result = cache.get(cache_key)
+        self.api = GoogleBooksAPI()
         
-        if cached_result:
-            return cached_result
-        
-        response = requests.get(
-            self.base_url,
-            params={
-                'q': query,
-                'key': self.api_key,
-                'maxResults': 20
-            }
-        )
-        
-        if response.status_code != 200:
-            return []
-        
-        books = []
-        for item in response.json().get('items', []):
-            volume_info = item.get('volumeInfo', {})
-            book_data = {
-                'google_books_id': item.get('id'),
-                'title': volume_info.get('title', ''),
-                'authors': volume_info.get('authors', []),
-                'genres': volume_info.get('categories', []),
-                'thumbnail_url': volume_info.get('imageLinks', {}).get('thumbnail')
-            }
-            books.append(book_data)
-        
-        cache.set(cache_key, books, 3600)  # Cache for 1 hour
-        return books
+    def search_books(self, query: str):
+        """Delegates book search to GoogleBooksAPI and formats for frontend."""
+        return self.api.search_books(query)
     
     def create_or_get_book(self, google_books_id: str) -> Optional[Book]:
         """Get book from DB or create from API"""
@@ -73,50 +44,73 @@ class BookService:
                 genres=volume_info.get('categories', []),
                 thumbnail_url=volume_info.get('imageLinks', {}).get('thumbnail')
             )
+        
+class QuoteViewSet(viewsets.ModelViewSet):
+    queryset = Quote.objects.all()
+    serializer_class = QuoteSerializer
 
-@login_required
-def search_books(request):
-    query = request.GET.get('q', '')
-    service = BookService()
-    books = service.search_books(query) if query else []
-    return JsonResponse({'books': books, 'query': query})
-
-@login_required
-def create_quote(request, google_books_id):
-    if request.method == 'POST':
+    @action(detail=True, methods=['post'], url_path='create-quote')
+    def create_quote(self, request, pk=None):
         service = BookService()
-        book = service.create_or_get_book(google_books_id)
+        book = service.create_or_get_book(google_books_id=pk)
+        serializer = QuoteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         
-        if not book:
-            return JsonResponse({'error': 'Book not found'}, status=404)
+        # Assign the book to the quote data
+        serializer.save(user=request.user, book=book)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated], url_path='add-reaction')
+    def add_reaction(self, request, pk=None):
+        """Allows a user to react to a quote"""
+        quote = self.get_object()
+        serializer = ReactionSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user, quote=quote)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
-        quote = Quote.objects.create(
-            user=request.user,
-            book=book,
-            content=request.POST['content'],
-            context=request.POST.get('context', '')
-        )
+    @action(detail=False, methods=['get'], url_path='feed')
+    def feed(self, request):
+        quotes = Quote.objects.select_related('user', 'book')\
+            .prefetch_related(
+                Prefetch('reactions', queryset=Reaction.objects.select_related('user')),
+                'tags',
+                Prefetch('comments', queryset=Comment.objects.select_related('user'))
+            )\
+            .annotate(reaction_count=Count('reactions'))\
+            .order_by('-created_at')
         
-        # Handle tags
-        tags = request.POST.getlist('tags')
-        for tag_name in tags:
-            tag, _ = Tag.objects.get_or_create(
-                name=tag_name.lower(),
-                defaults={'slug': slugify(tag_name)}
-            )
-            quote.tags.add(tag)
-        
-        
-    return JsonResponse({'quote_id': quote.id})
+        # Use the custom feed serializer for the feed response
+        serializer = QuoteFeedSerializer(quotes, many=True)
+        return Response({'quotes': serializer.data})
+    
+class TagViewSet(viewsets.ModelViewSet):
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
+class ReactionViewSet(viewsets.ModelViewSet):
+    queryset = Reaction.objects.select_related('user', 'quote')
+    serializer_class = ReactionSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
-@login_required
-@require_POST
+class CommentViewSet(viewsets.ModelViewSet):
+    queryset = Comment.objects.select_related('user', 'book')
+    serializer_class = CommentSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+class UserFavoriteViewSet(viewsets.ModelViewSet):
+    queryset = UserFavorite.objects.select_related('user', 'book')
+    serializer_class = UserFavoriteSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+@action(detail=True, methods=['post'], url_path='toggle-reaction')
 def toggle_reaction(request, quote_id):
     quote = get_object_or_404(Quote, id=quote_id)
     reaction_type = request.POST.get('reaction_type')
     
-    if reaction_type not in dict(Reaction.REACTION_TYPES):
+    if reaction_type not in dict(Reaction.type):
         return JsonResponse({'error': 'Invalid reaction type'}, status=400)
     
     reaction, created = Reaction.objects.get_or_create(
@@ -134,14 +128,3 @@ def toggle_reaction(request, quote_id):
     
     return JsonResponse({'status': 'updated'})
 
-def quote_feed(request):
-    quotes = Quote.objects.select_related('user', 'book')\
-        .prefetch_related(
-            Prefetch('reactions', queryset=Reaction.objects.select_related('user')),
-            'tags',
-            Prefetch('comments', queryset=Comment.objects.select_related('user'))
-        )\
-        .annotate(reaction_count=Count('reactions'))\
-        .order_by('-created_at')
-    
-    return JsonResponse({'quotes': quotes})
