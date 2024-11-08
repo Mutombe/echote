@@ -45,7 +45,7 @@ class TagSerializer(serializers.ModelSerializer):
 class ReactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Reaction
-        fields = ['id', 'user', 'reaction_type']
+        fields = ['id', 'user', 'type']
 
 class CommentSerializer(serializers.ModelSerializer):
     class Meta:
