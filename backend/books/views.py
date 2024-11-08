@@ -4,8 +4,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import viewsets, status
 import requests
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from .serializers import CommentSerializer, QuoteFeedSerializer, QuoteSerializer, ReactionSerializer, TagSerializer, UserFavoriteSerializer
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
+from .serializers import BookSerializer, CommentSerializer, QuoteFeedSerializer, QuoteSerializer, ReactionSerializer, TagSerializer, UserFavoriteSerializer
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -84,6 +84,19 @@ class QuoteViewSet(viewsets.ModelViewSet):
         # Use the custom feed serializer for the feed response
         serializer = QuoteFeedSerializer(quotes, many=True)
         return Response({'quotes': serializer.data})
+
+class BookViewSet(viewsets.ModelViewSet):
+    queryset = Book.objects.all()
+    serializer_class = BookSerializer
+
+    @action(detail=False, methods=['get'])
+    def search(self, request):
+        query = request.query_params.get('q')
+        if query:
+            google_books_api = GoogleBooksAPI()
+            books = google_books_api.search_books(query)
+            return Response(books, status=status.HTTP_200_OK)
+        return Response({'error': 'No query provided'}, status=status.HTTP_400_BAD_REQUEST)
     
 class TagViewSet(viewsets.ModelViewSet):
     queryset = Tag.objects.all()
