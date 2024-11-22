@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import viewsets, status
 import requests
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated, AllowAny
 from .serializers import BookSerializer, CommentSerializer, QuoteFeedSerializer, QuoteSerializer, ReactionSerializer, TagSerializer, UserFavoriteSerializer
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -50,12 +50,14 @@ def search_books(request):
     books = book_service.search_books(query)
     return Response(books, status=status.HTTP_200_OK)
 
-class BookViewSet(viewsets.ModelViewSet):
+class BookViewSet(viewsets.ModelViewSet): 
+    permission_classes = [IsAuthenticatedOrReadOnly]
     queryset = Book.objects.all()
     serializer_class = BookSerializer
     service = BookService()
+   
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], permission_classes=[AllowAny])
     def search(self, request):
         """Search for books in the database and API if not found."""
         query = request.query_params.get('q')

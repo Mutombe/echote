@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Book, Heart, MessageCircle, Bookmark, Share2, Sparkles, Quote, ChevronDown, Search } from 'lucide-react';
+import LoginButton from '../authentication/login/loginButton';
+import LogoutButton from '../authentication/logout/logout';
+import SignUpButton from '../authentication/signup/signup';
+import { Button } from "@/components/ui/button";
+import { Book,LogOut, UserPlus,LogIn, Heart, MessageCircle, Bookmark, Share2, Sparkles, Quote, ChevronDown, Search } from 'lucide-react';
 import { fetchBooks, selectSearchResults, selectBooksStatus, selectBooksError } from '@/redux/slices/booksSlice';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -10,6 +14,8 @@ const EchoteFeed = () => {
   const searchResults = useSelector(selectSearchResults) || [];
   const status = useSelector(selectBooksStatus);
   const error = useSelector(selectBooksError);
+  const isAuthenticated = useSelector(state => state.auth?.isAuthenticated);
+
   
   const [activeTab, setActiveTab] = useState('trending');
   const [searchQuery, setSearchQuery] = useState('');
@@ -60,6 +66,16 @@ const EchoteFeed = () => {
             </h1>
           </div>
           <Sparkles className="w-5 h-5 text-[#FF8370]" />
+          <div className="flex space-x-2">
+              {!isAuthenticated ? (
+                <>
+                  <SignUpButton />
+                  <LoginButton />
+                </>
+              ) : (
+<LogoutButton/>
+              )}
+            </div>
         </div>
       </div>
 

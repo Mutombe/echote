@@ -17,6 +17,7 @@ api.interceptors.request.use(
     const token = localStorage.getItem("token");
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
+      console.log('Request headers:', config.headers);
     }
     return config;
   },
@@ -29,7 +30,7 @@ api.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-      window.location.reload(); // Refresh to clear unauthorized access
+      //window.location.reload(); // Refresh to clear unauthorized access
     }
     return Promise.reject(error);
   }
