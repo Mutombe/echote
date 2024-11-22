@@ -1,14 +1,17 @@
-import './App.css'
+import "./App.css";
+import { Routes, Route, BrowserRouter } from "react-router-dom";
+import EchoteFeed from "./components/feed/feed";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
-function App() {
-
+export default function App() {
   return (
-    <>
-      <p className="text-red-500">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <BrowserRouter>
+      <Routes>
+        {/*<Route path="" element={<HomePage />} />*/}
+        <Route path="/" element={<EchoteFeed />} />
+      </Routes>
+      <ToastContainer />
+    </BrowserRouter>
+  );
 }
-
-export default App
