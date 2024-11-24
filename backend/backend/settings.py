@@ -41,7 +41,6 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'rest_framework.authtoken',
-    'rest_framework_jwt',
     'corsheaders',
     'books',
     'accounts'
@@ -103,12 +102,18 @@ CORS_ALLOW_METHODS = [
 ]
 
 CORS_ALLOW_HEADERS = [
-    'content-type',
+    'accept',
+    'accept-encoding',
     'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
     'x-csrftoken',
-    'accept'
+    'x-requested-with',
 ]
 
+CORS_EXPOSE_HEADERS = ['content-type', 'authorization']
 CORS_ALLOW_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 CSRF_COOKIE_SECURE = True

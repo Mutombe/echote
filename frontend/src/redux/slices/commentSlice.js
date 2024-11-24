@@ -4,7 +4,7 @@ import api from '@/utils/axiosConfig';
 export const fetchComments = createAsyncThunk(
   'comments/fetchComments',
   async (quoteId) => {
-    const response = await api.get(`/quotes/${quoteId}/comments/`);
+    const response = await api.get(`api/quotes/${quoteId}/comments/`);
     return response.data;
   }
 );
@@ -13,7 +13,7 @@ export const createComment = createAsyncThunk(
   'comments/createComment',
   async ({ quoteId, text }, { rejectWithValue }) => {
     try {
-      const response = await api.post(`/quotes/${quoteId}/comments/`, { text });
+      const response = await api.post(`api/quotes/${quoteId}/comments/`, { text });
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response.data);

@@ -4,24 +4,24 @@ import api from '@/utils/axiosConfig';
 export const fetchQuotes = createAsyncThunk(
   'quotes/fetchQuotes',
   async () => {
-    const response = await api.get(`/quotes/feed/`);
+    const response = await api.get(`api/quotes/feed/`);
     return response.data.quotes;
   }
 );
 
 export const createQuote = createAsyncThunk(
   'quotes/createQuote',
-  async ({ text, context, tags, bookId }, { rejectWithValue }) => {
+  async ({ text, context, tags, book}, { rejectWithValue }) => {
     try {
-      const response = await api.post(`/quotes/create-quote/`, {
+      const response = await api.post(`api/quotes/create-quote/`, {
         text,
         context,
         tags,
-        book: bookId,
+        book
       });
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(error.response?.data);
     }
   }
 );
@@ -47,8 +47,17 @@ const quotesSlice = createSlice({
         state.status = 'failed';
         state.error = action.payload;
       })
+      .addCase(createQuote.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
       .addCase(createQuote.fulfilled, (state, action) => {
+        state.status = 'succeeded';
         state.items.push(action.payload);
+      })
+      .addCase(createQuote.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload;
       });
   },
 });

@@ -5,7 +5,7 @@ from .views import QuoteViewSet, BookViewSet, TagViewSet, ReactionViewSet, Comme
 # Initialize the default router
 router = DefaultRouter()
 
-router.register(r'quotes', QuoteViewSet, basename='quote') 
+router.register(r'quotes', QuoteViewSet, basename='quote')  
 router.register(r'books', BookViewSet, basename='book')
 router.register(r'tags', TagViewSet, basename='tag')
 router.register(r'reactions', ReactionViewSet, basename='reaction')
