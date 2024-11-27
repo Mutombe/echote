@@ -193,7 +193,7 @@ class QuoteViewSet(viewsets.ModelViewSet):
         )
 
         # Use the custom feed serializer for the feed response
-        serializer = QuoteFeedSerializer(quotes, many=True)
+        serializer = QuoteSerializer(quotes, many=True)
         return Response({"quotes": serializer.data})
 
 
@@ -210,9 +210,21 @@ class ReactionViewSet(viewsets.ModelViewSet):
 
 
 class CommentViewSet(viewsets.ModelViewSet):
-    queryset = Comment.objects.select_related("user", "book")
+    queryset = Comment.objects.select_related('user', 'quote', 'parent')
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def perform_create(self, serializer):
+        quote_id = self.kwargs.get('quote_pk')
+        quote = get_object_or_404(Quote, pk=quote_id)
+        serializer.save(user=self.request.user, quote=quote)
+
+    @action(detail=False, methods=['GET'], url_path='quote/(?P<quote_pk>\d+)')
+    def comments_by_quote(self, request, quote_pk=None):
+        quote = get_object_or_404(Quote, pk=quote_pk)
+        comments = Comment.objects.filter(quote=quote, parent__isnull=True)
+        serializer = self.get_serializer(comments, many=True)
+        return Response(serializer.data)
 
 
 class UserFavoriteViewSet(viewsets.ModelViewSet):

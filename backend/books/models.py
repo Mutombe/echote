@@ -83,13 +83,24 @@ class Reaction(models.Model):
 class Comment(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     quote = models.ForeignKey(
-        Quote, related_name="comments", on_delete=models.CASCADE, null=True
+        Quote, related_name="comments", on_delete=models.CASCADE, default=None
+    )
+    parent = models.ForeignKey(
+        'self', 
+        null=True, 
+        blank=True, 
+        related_name='replies', 
+        on_delete=models.CASCADE
     )
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.user.username} commented on {self.book.title}"
+        return f"Comment by {self.user.username} on {self.quote.text[:50]}"
 
 
 class UserFavorite(models.Model):

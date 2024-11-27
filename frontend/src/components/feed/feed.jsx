@@ -5,13 +5,14 @@ import LogoutButton from "../authentication/logout/logout";
 import SignUpButton from "../authentication/signup/signup";
 import { Button } from "@/components/ui/button";
 import CreateQuoteDialog from "../quote/createQuote";
-import { Bookmark, Sparkles, Quote, ChevronDown, Search } from "lucide-react";
+import { Bookmark, Sparkles, Quote, ChevronDown, Search, Heart, Share2, Book, BookOpen, MessageCircle } from "lucide-react";
 import {
   fetchBooks,
   selectSearchResults,
   selectBooksStatus,
   selectBooksError,
 } from "@/redux/slices/booksSlice";
+import { fetchQuotes } from "@/redux/slices/quoteSlice";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -20,6 +21,10 @@ const EchoteFeed = () => {
   const searchResults = useSelector(selectSearchResults);
   const status = useSelector(selectBooksStatus);
   const error = useSelector(selectBooksError);
+  const quotes = useSelector((state) => state.quotes.items);
+  console.log("quotes",quotes.book)
+  const quote_status = useSelector((state) => state.quotes.status);
+  const quote_error = useSelector((state) => state.quotes.error);
   const isAuthenticated = useSelector((state) => state.auth?.isAuthenticated);
 
   const [activeTab, setActiveTab] = useState("trending");
@@ -32,6 +37,12 @@ const EchoteFeed = () => {
       toast.error(error || "An error occurred while fetching books.");
     }
   }, [status, error]);
+
+  useEffect(() => {
+    if (status === 'idle') {
+      dispatch(fetchQuotes());
+    }
+  }, [status, dispatch]);
 
   useEffect(() => {
     console.log("Search Results:", searchResults);
@@ -132,6 +143,7 @@ const EchoteFeed = () => {
         </div>
       </div>
 
+      {/* Quotes feed */}
       <div className="space-y-4 p-4">
         {status === "loading" && (
           <p className="text-center text-gray-500">Loading...</p>
@@ -218,6 +230,107 @@ const EchoteFeed = () => {
                 <p className="text-sm text-gray-600">{book.description}</p>
               </div>
             )}
+          </div>
+        ))}
+      </div>
+
+      <div className="space-y-4 p-4">
+        {quote_status === 'loading' && <p className="text-center text-gray-500">Loading quotes...</p>}
+        
+        {quote_status === 'failed' && <p className="text-center text-red-500">{quote_error}</p>}
+        
+        {quote_status === 'succeeded' && quotes.map((quote) => (
+          <div key={quote.id} className="bg-white rounded-xl shadow-sm border border-[#92E5D7]/30 p-4 hover:shadow-md transition-shadow">
+            {/* User Info */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#FF8370] to-[#92E5D7] p-0.5">
+                  <div className="w-full h-full rounded-full bg-white p-0.5">
+                    <img 
+                      src={quote.user.avatar ? quote.user.avatar : "/user.jpg"}
+                      alt={quote.user.username}
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">✨ {quote.user.username}</h3>
+                  <p className="text-xs text-gray-500">{new Date(quote.created_at).toLocaleDateString()}</p>
+                </div>
+              </div>
+              {quote.context && (
+                <button className="text-xs text-[#FF8370] font-medium flex items-center space-x-1">
+                  <Book className="w-4 h-4" />
+                  <span>{quote.context}</span>
+                </button>
+              )}
+            </div>
+
+            {/* Book Info */}
+            <div className="flex items-center space-x-3 mb-3 p-2 rounded-lg bg-[#92E5D7]/10">
+              {quote.book.cover_image && (
+                <img 
+                  src={quote.book.cover_image} 
+                  alt={quote.book.title}
+                  className="w-12 h-16 object-cover rounded"
+                />
+              )}
+              <div>
+                <h4 className="text-sm font-bold text-gray-700">{quote.book.title}</h4>
+                <p className="text-xs text-gray-500">
+                  by {quote.book.authors?.join(', ') || 'Unknown Author'}
+                </p>
+              </div>
+            </div>
+
+            {/* Quote Content */}
+            <div className="relative mb-3">
+              <Quote className="w-8 h-8 text-[#FF8370]/10 absolute -left-2 -top-2" />
+              <p className="text-gray-800 leading-relaxed pl-4">
+                "{quote.text}"
+              </p>
+            </div>
+
+            {/* Tags */}
+            {quote.tags?.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {quote.tags.map((tag) => (
+                  <span
+                    key={tag.id}
+                    className="px-3 py-1 text-xs rounded-full bg-gradient-to-r from-[#92E5D7]/10 to-[#FF8370]/10 text-[#FF8370] border border-[#FF8370]/20"
+                  >
+                    #{tag.name}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Interaction buttons */}
+            <div className="flex items-center justify-between pt-3 border-t border-[#92E5D7]/20">
+              <div className="flex space-x-4">
+                <button className="flex items-center space-x-1 text-gray-500 hover:text-[#FF8370] transition-colors">
+                  <Heart className="w-5 h-5" />
+                  <span className="text-xs font-medium">{quote.reactions?.length || 0}</span>
+                </button>
+                <button className="flex items-center space-x-1 text-gray-500 hover:text-[#92E5D7] transition-colors">
+                  <MessageCircle className="w-5 h-5" />
+                  <span className="text-xs font-medium">{quote.comments?.length || 0}</span>
+                </button>
+              </div>
+              <div className="flex space-x-3">
+                <button 
+                  className={`transition-colors ${
+                    bookmarkStates[quote.id] ? 'text-[#FF8370]' : 'text-gray-500 hover:text-[#FF8370]'
+                  }`}
+                  onClick={() => toggleBookmark(quote.id)}
+                >
+                  <Bookmark className="w-5 h-5" fill={bookmarkStates[quote.id] ? '#FF8370' : 'none'} />
+                </button>
+                <button className="text-gray-500 hover:text-[#92E5D7] transition-colors">
+                  <Share2 className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
           </div>
         ))}
       </div>

@@ -1,19 +1,23 @@
 import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import api from '@/utils/axiosConfig';
 
-export const fetchComments = createAsyncThunk(
-  'comments/fetchComments',
+export const fetchCommentsByQuote = createAsyncThunk(
+  'comments/fetchByQuote',
   async (quoteId) => {
-    const response = await api.get(`api/quotes/${quoteId}/comments/`);
+    const response = await api.get(`api/comments/quote/${quoteId}/`);
     return response.data;
   }
 );
 
-export const createComment = createAsyncThunk(
-  'comments/createComment',
-  async ({ quoteId, text }, { rejectWithValue }) => {
+export const createNestedComment = createAsyncThunk(
+  'comments/createNested',
+  async ({ quoteId, text, parentId = null }, { rejectWithValue }) => {
     try {
-      const response = await api.post(`api/quotes/${quoteId}/comments/`, { text });
+      const response = await api.post(`api/comments/`, { 
+        quote: quoteId, 
+        content: text, 
+        parent: parentId 
+      });
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response.data);
